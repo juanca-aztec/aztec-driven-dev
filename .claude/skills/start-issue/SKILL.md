@@ -18,18 +18,46 @@ Begin work on Aztec Plataforma task `$ARGUMENTS`.
    ```
    Show the user: title, description, acceptance criteria.
 
-2. **Create a feature branch** from the task metadata:
+2. **Validate acceptance criteria** — inspect `body_markdown` of the fetched task:
+
+   - If `body_markdown` does **NOT** contain `- [ ]` (i.e., no checklist items):
+     1. Inform the user: "Esta tarea no tiene criterios de aceptación definidos."
+     2. Ask: "Por favor describe qué quieres lograr con esta tarea."
+     3. Wait for the user's response, then generate a full markdown template:
+        ```
+        ## Objetivo
+        <one-line summary from user input>
+
+        ## Descripción
+        <expanded description based on user input>
+
+        ## Criterios de Aceptación
+        - [ ] <measurable criterion 1>
+        - [ ] <measurable criterion 2>
+        - [ ] <measurable criterion 3>
+
+        ## Notas Técnicas
+        <any relevant technical notes>
+        ```
+     4. Update the task with the generated template:
+        ```bash
+        python3 scripts/platform_client.py update $0 "<TEMPLATE>"
+        ```
+     5. Confirm to the user that the task was updated with acceptance criteria.
+   - If `body_markdown` **contains** `- [ ]`: continue normally to the next step.
+
+3. **Create a feature branch** from the task metadata:
    ```bash
    git checkout -b feat/$0-<slugified-title>
    ```
    Use the task title to generate a short kebab-case slug.
 
-3. **Move to En curso** in Aztec Plataforma:
+4. **Move to En curso** in Aztec Plataforma:
    ```bash
    python3 scripts/platform_client.py move $0 "En curso"
    ```
 
-4. **Confirm** to the user:
+5. **Confirm** to the user:
    ```
    Task $0 started.
    Branch: feat/$0-<slug>

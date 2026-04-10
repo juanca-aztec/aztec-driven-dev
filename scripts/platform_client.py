@@ -9,6 +9,7 @@ Usage:
   python scripts/platform_client.py move AZT-1 "En curso"
   python scripts/platform_client.py comment AZT-1 "Evidence message"
   python scripts/platform_client.py list [--column "En curso"]
+  python scripts/platform_client.py update <KEY> "<BODY_MARKDOWN>"
 """
 import os
 import sys
@@ -177,6 +178,16 @@ def search_tasks_by_title(substring):
     return [t for t in tasks if substring.lower() in t.get("title", "").lower()]
 
 
+def update_task(task_key, body_markdown):
+    """Update a task's body_markdown. Returns True/False."""
+    task = get_task(task_key)
+    if not task:
+        print(f"Task {task_key} not found.", file=sys.stderr)
+        return False
+    _request("PATCH", f"tasks/{task['id']}", {"body_markdown": body_markdown})
+    return True
+
+
 # ── CLI ──
 
 def _print_task(task, full=False):
@@ -256,6 +267,16 @@ def main():
                 _print_task(t)
         else:
             print("No tasks found.")
+
+    elif cmd == "update":
+        if len(sys.argv) < 4:
+            print('Usage: platform_client.py update <TASK_KEY> "<BODY_MARKDOWN>"')
+            sys.exit(1)
+        ok = update_task(sys.argv[2], sys.argv[3])
+        if ok:
+            print(f"Updated {sys.argv[2]}")
+        else:
+            sys.exit(1)
 
     else:
         print(f"Unknown command: {cmd}")
