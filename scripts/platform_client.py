@@ -164,11 +164,11 @@ def list_tasks(column_name=None, project_id=None):
         else:
             # Multi-project mode: fetch all active projects
             projects = list_projects()
-            active = [p for p in projects if p.get("status") == "En ejecucion"]
+            active = [p for p in projects if p.get("status") == "En ejecución"]
             if not active:
                 print(
-                    "ERROR: PLATFORM_PROJECT_ID requerido para esta operacion. "
-                    "Agregalo al .env",
+                    "ERROR: PLATFORM_PROJECT_ID requerido para esta operación. "
+                    "Agrégalo al .env",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -203,8 +203,8 @@ def create_task(title, body_markdown=None, priority="media", project_id=None):
 
     if not resolved_project_id:
         print(
-            "ERROR: PLATFORM_PROJECT_ID requerido para esta operacion. "
-            "Agregalo al .env",
+            "ERROR: PLATFORM_PROJECT_ID requerido para esta operación. "
+            "Agrégalo al .env",
             file=sys.stderr,
         )
         sys.exit(1)
