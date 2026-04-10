@@ -1,6 +1,6 @@
 ---
 name: status
-description: Display project status dashboard — Linear issues, current branch, CI status
+description: Display project status dashboard — Aztec Plataforma tasks, current branch, CI status
 user-invocable: true
 allowed-tools: Bash(git *) Bash(gh *) Bash(python3 scripts/*)
 ---
@@ -11,11 +11,11 @@ Display a dashboard of the current project state.
 
 ## Steps
 
-1. **Linear issues**:
+1. **Aztec Plataforma tasks**:
    ```bash
-   python3 scripts/linear_client.py list
+   python3 scripts/platform_client.py list
    ```
-   Show all issues grouped by state.
+   Show all tasks grouped by column (Sin empezar, Sprint semanal, En curso, Hecho).
 
 2. **Current branch**:
    ```bash
@@ -37,21 +37,21 @@ Display a dashboard of the current project state.
    ┌──────────────────────────────┐
    │     PROJECT STATUS           │
    ├──────────────────────────────┤
-   │ Branch: feat/DEMO-1-...     │
+   │ Branch: feat/AZT-1-...      │
    │                              │
-   │ Issues:                      │
-   │   DEMO-1  In Progress  ...  │
-   │   DEMO-2  To Do        ...  │
-   │   DEMO-3  To Do        ...  │
+   │ Tasks:                       │
+   │   AZT-1  En curso   ...     │
+   │   AZT-2  Sin empezar ...    │
+   │   AZT-3  Sin empezar ...    │
    │                              │
    │ CI: Last run passed (2m ago) │
    └──────────────────────────────┘
    ```
 
-## If an issue ID is provided (`/status DEMO-1`)
+## If a task key is provided (`/status AZT-1`)
 
-Show detailed info for that specific issue:
+Show detailed info for that specific task:
 ```bash
-python3 scripts/linear_client.py get $0
+python3 scripts/platform_client.py get $0 --full
 ```
-Include: state, description, acceptance criteria, linked PRs.
+Include: column, description, acceptance criteria.

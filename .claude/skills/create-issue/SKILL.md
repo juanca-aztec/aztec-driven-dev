@@ -1,6 +1,6 @@
 ---
 name: create-issue
-description: Create a well-documented issue in Linear with objective, description, acceptance criteria, and technical notes
+description: Create a well-documented task in Aztec Plataforma with objective, description, acceptance criteria, and technical notes
 user-invocable: true
 allowed-tools: Bash(python3 scripts/*)
 argument-hint: "<TITLE> [details]"
@@ -8,7 +8,7 @@ argument-hint: "<TITLE> [details]"
 
 # Create Issue
 
-Create a well-documented issue in Linear following a standard template.
+Create a well-documented task in Aztec Plataforma following a standard template.
 
 ## Usage Examples
 
@@ -23,7 +23,7 @@ Create a well-documented issue in Linear following a standard template.
 Detect the language from the user's request:
 - If the user writes in **Spanish**, use the Spanish template
 - If the user writes in **English**, use the English template
-- If unclear, check the `ISSUE_LANG` env var (default: `es`)
+- If unclear, default to Spanish
 
 ## Steps
 
@@ -73,12 +73,12 @@ that helps understand the scope and approach.
 - Suggested approach (if applicable)
 ```
 
-3. **Create the issue**:
+3. **Create the task**:
    ```bash
-   python3 scripts/linear_client.py create "<TITLE>" "<DESCRIPTION>"
+   python3 scripts/platform_client.py create "<TITLE>" "<DESCRIPTION>"
    ```
 
-4. **Confirm** to the user showing the issue ID, title, and URL.
+4. **Confirm** to the user showing the task key (e.g., AZT-5) and title.
 
 ## Template Rules
 
@@ -105,5 +105,4 @@ that helps understand the scope and approach.
 
 - If the user gives a vague request, infer reasonable criteria from the project context.
 - If the user only gives a title, generate the full description based on the project (Task Board).
-- The issue is created in the team defined by `LINEAR_TEAM_KEY` env var.
-- Every issue must have at least: Objetivo, Descripción, and Criterios de Aceptación.
+- Every task must have at least: Objetivo, Descripción, and Criterios de Aceptación.

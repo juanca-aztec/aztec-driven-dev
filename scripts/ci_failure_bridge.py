@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-CI Failure Bridge — When CI fails, auto-create a bug in Linear.
+CI Failure Bridge — When CI fails, auto-create a bug task in Aztec Plataforma.
 Triggered by: .github/workflows/linear-bridge.yml
 
 Usage:
@@ -11,9 +11,9 @@ import sys
 import json
 import subprocess
 
-# Add scripts dir to path for linear_client import
+# Add scripts dir to path for platform_client import
 sys.path.insert(0, os.path.dirname(__file__))
-from linear_client import _query, add_comment, get_issue
+from platform_client import add_comment, create_task, search_tasks_by_title
 
 
 def get_failed_jobs(run_id):
@@ -41,7 +41,6 @@ def get_repo_url():
             capture_output=True, text=True, timeout=10,
         )
         url = result.stdout.strip()
-        # Convert SSH to HTTPS format
         if url.startswith("git@github.com:"):
             url = url.replace("git@github.com:", "https://github.com/").rstrip(".git")
         return url.rstrip(".git")
@@ -50,68 +49,44 @@ def get_repo_url():
 
 
 def create_ci_bug(run_id, failed_jobs, branch):
-    """Create a bug in Linear for the CI failure (idempotent)."""
+    """Create or update a CI failure task in Aztec Plataforma (idempotent)."""
     repo_url = get_repo_url()
     title = f"[CI-BRIDGE] CI failed on {branch}"
-    description = f"""## CI Failure Report
+    body_markdown = f"""## CI Failure Report
 
 **Run ID**: {run_id}
 **Branch**: `{branch}`
 **Failed jobs**: {', '.join(failed_jobs) if failed_jobs else 'unknown'}
 
-[View run on GitHub]({repo_url}/actions/runs/{run_id})
+[Ver run en GitHub]({repo_url}/actions/runs/{run_id})
 """
 
-    # Check for existing open bridge issue (idempotent — no duplicates)
-    existing = _query("""
-        query {
-            issueSearch(query: "[CI-BRIDGE] state:started,unstarted", first: 1) {
-                nodes { id identifier }
-            }
-        }
-    """)
-    nodes = existing.get("data", {}).get("issueSearch", {}).get("nodes", [])
+    # Check for existing open bridge task (idempotent — no duplicates)
+    existing = search_tasks_by_title("[CI-BRIDGE]")
+    # Filter to only open tasks (not in "Hecho")
+    open_bridge = [
+        t for t in existing
+        if t.get("_column_name", "") != "Hecho"
+    ]
 
-    if nodes:
-        # Add comment to existing issue instead of creating duplicate
-        issue_id = nodes[0]["identifier"]
+    if open_bridge:
+        # Add comment to existing task instead of creating duplicate
+        task = open_bridge[0]
+        task_key = task.get("task_key", task.get("id"))
         add_comment(
-            issue_id,
+            task_key,
             f"CI failed again on `{branch}`\n\n**Jobs**: {', '.join(failed_jobs)}\n\n"
             f"[Run {run_id}]({repo_url}/actions/runs/{run_id})"
         )
-        print(f"Updated existing issue {issue_id}")
+        print(f"Updated existing CI bridge task {task_key}")
     else:
-        # Get team ID dynamically
-        team_key = os.environ.get("LINEAR_TEAM_KEY", "DEMO")
-        team_result = _query("""
-            query($key: String!) {
-                teams(filter: { key: { eq: $key } }) {
-                    nodes { id name }
-                }
-            }
-        """, {"key": team_key})
-        teams = team_result.get("data", {}).get("teams", {}).get("nodes", [])
-        if not teams:
-            print(f"Team '{team_key}' not found in Linear. Set LINEAR_TEAM_KEY env var.", file=sys.stderr)
+        task = create_task(title, body_markdown, priority="alta")
+        if task:
+            key = task.get("task_key", task.get("id", "?"))
+            print(f"Created new CI bridge task: {key}  {title}")
+        else:
+            print("Failed to create CI bridge task.", file=sys.stderr)
             sys.exit(1)
-        team_id = teams[0]["id"]
-
-        # Create new bug issue
-        _query("""
-            mutation($title: String!, $description: String!, $teamId: String!) {
-                issueCreate(input: {
-                    title: $title
-                    description: $description
-                    teamId: $teamId
-                    priority: 1
-                }) {
-                    success
-                    issue { identifier url }
-                }
-            }
-        """, {"title": title, "description": description, "teamId": team_id})
-        print(f"Created new CI bridge issue: {title}")
 
 
 def main():
@@ -127,7 +102,7 @@ def main():
         print(f"CI failed on {branch}. Failed jobs: {', '.join(failed)}")
         create_ci_bug(run_id, failed, branch)
     else:
-        print(f"No failed jobs found for run {run_id}. Creating generic bridge issue.")
+        print(f"No failed jobs found for run {run_id}. Creating generic bridge task.")
         create_ci_bug(run_id, ["unknown"], branch)
 
 

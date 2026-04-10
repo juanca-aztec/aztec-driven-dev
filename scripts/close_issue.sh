@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 #
-# close_issue.sh — Harness gate script for closing Linear issues.
+# close_issue.sh — Harness gate script for closing platform tasks.
 #
-# Runs 3 gates before allowing an issue to be closed:
+# Runs 3 gates before allowing a task to be closed:
 #   Gate 1: Tests passing (npm test)
 #   Gate 2: CI green (last GitHub Actions run)
-#   Gate 3: Acceptance criteria checked (Linear API)
+#   Gate 3: Acceptance criteria checked (Aztec Plataforma API)
 #
 # Usage:
-#   bash scripts/close_issue.sh DEMO-1
+#   bash scripts/close_issue.sh AZT-1
 #
 
 set -euo pipefail
@@ -29,7 +29,7 @@ fi
 
 echo ""
 echo "========================================"
-echo "  Harness Gate Check: $ISSUE_ID"
+echo "  Harness Gate Check: $ISSUE_ID  (Aztec Plataforma)"
 echo "========================================"
 echo ""
 
@@ -76,22 +76,21 @@ fi
 # ── Gate 3: Acceptance Criteria ──
 
 echo -n "Gate 3/3 — Acceptance criteria... "
-ISSUE_DATA=$(python3 "$SCRIPT_DIR/linear_client.py" get "$ISSUE_ID" --full 2>/dev/null || echo "")
+ISSUE_DATA=$(python3 "$SCRIPT_DIR/platform_client.py" get "$ISSUE_ID" --full 2>/dev/null || echo "")
 if [ -z "$ISSUE_DATA" ]; then
-    echo -e "${YELLOW}SKIP (could not fetch issue)${NC}"
+    echo -e "${YELLOW}SKIP (could not fetch task)${NC}"
     GATES_PASSED=$((GATES_PASSED + 1))
 else
-    # Count checked and unchecked boxes (Linear uses [X] uppercase)
     UNCHECKED=$(echo "$ISSUE_DATA" | grep -c '\- \[ \]' || true)
     CHECKED=$(echo "$ISSUE_DATA" | grep -ci '\- \[x\]' || true)
     TOTAL=$((UNCHECKED + CHECKED))
 
     if [ "$TOTAL" -eq 0 ]; then
-        echo -e "${YELLOW}SKIP (no checkboxes found in issue description)${NC}"
+        echo -e "${YELLOW}SKIP (no checkboxes found in task description)${NC}"
         GATES_PASSED=$((GATES_PASSED + 1))
     elif [ "$UNCHECKED" -gt 0 ]; then
         echo -e "${RED}FAIL ($UNCHECKED/$TOTAL unchecked criteria)${NC}"
-        echo -e "${YELLOW}  Fix: Complete all acceptance criteria checkboxes in Linear.${NC}"
+        echo -e "${YELLOW}  Fix: Complete all acceptance criteria checkboxes in Aztec Plataforma.${NC}"
     else
         echo -e "${GREEN}PASS ($CHECKED/$TOTAL checked)${NC}"
         GATES_PASSED=$((GATES_PASSED + 1))
@@ -172,7 +171,7 @@ if [ "$GATES_PASSED" -eq "$GATES_TOTAL" ]; then
     fi
 
     # Acceptance criteria count
-    ISSUE_FULL=$(python3 "$SCRIPT_DIR/linear_client.py" get "$ISSUE_ID" --full 2>/dev/null || echo "")
+    ISSUE_FULL=$(python3 "$SCRIPT_DIR/platform_client.py" get "$ISSUE_ID" --full 2>/dev/null || echo "")
     AC_CHECKED=$(echo "$ISSUE_FULL" | grep -ci '\- \[x\]' || true)
     AC_TOTAL=$((AC_CHECKED + $(echo "$ISSUE_FULL" | grep -c '\- \[ \]' || true)))
 
@@ -220,18 +219,18 @@ ${FILES_CHANGED}
 - **Issue**: ${ISSUE_ID}
 - **Action**: Closed with automated evidence
 - **Timestamp**: ${TIMESTAMP}
-- **Tool**: scripts/close_issue.sh
+- **Tool**: scripts/close_issue.sh (Aztec Plataforma)
 - **Commit SHA**: \`${COMMIT_SHA}\`
 
 ---
 *Evidencia generada automáticamente por el harness.*"
 
-    python3 "$SCRIPT_DIR/linear_client.py" comment "$ISSUE_ID" "$EVIDENCE" 2>/dev/null || true
+    python3 "$SCRIPT_DIR/platform_client.py" comment "$ISSUE_ID" "$EVIDENCE" 2>/dev/null || true
 
-    # Move to Done
-    python3 "$SCRIPT_DIR/linear_client.py" move "$ISSUE_ID" "Done" 2>/dev/null || true
+    # Move to Hecho
+    python3 "$SCRIPT_DIR/platform_client.py" move "$ISSUE_ID" "Hecho" 2>/dev/null || true
 
-    echo "Evidence posted and issue moved to Done."
+    echo "Evidence posted and task moved to Hecho."
     exit 0
 else
     echo -e "${RED}  BLOCKED ($GATES_PASSED/$GATES_TOTAL passed)${NC}"
