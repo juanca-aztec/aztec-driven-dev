@@ -5,10 +5,12 @@ Uses only stdlib (no pip dependencies).
 
 Usage:
   python scripts/platform_client.py get AZT-1
-  python scripts/platform_client.py create "Title" ["Description"]
+  python scripts/platform_client.py create "Title" ["Description"] [--project-id <UUID>]
   python scripts/platform_client.py move AZT-1 "En curso"
   python scripts/platform_client.py comment AZT-1 "Evidence message"
-  python scripts/platform_client.py list [--column "En curso"]
+  python scripts/platform_client.py list [--column "En curso"] [--project-id <UUID>]
+  python scripts/platform_client.py update <KEY> "<BODY_MARKDOWN>"
+  python scripts/platform_client.py projects
 """
 import os
 import sys
@@ -32,7 +34,10 @@ def _load_env():
 
 
 def _get_config():
-    """Load config from .env file first, then environment."""
+    """Load config from .env file first, then environment.
+
+    Returns (api_key, base_url, project_id) where project_id may be None.
+    """
     env_vars = _load_env()
 
     api_key = env_vars.get("PLATFORM_API_KEY") or os.environ.get("PLATFORM_API_KEY")
@@ -45,10 +50,8 @@ def _get_config():
     if not base_url:
         print("ERROR: PLATFORM_BASE_URL not set. Add it to .env or export it.", file=sys.stderr)
         sys.exit(1)
-    if not project_id:
-        print("ERROR: PLATFORM_PROJECT_ID not set. Add it to .env or export it.", file=sys.stderr)
-        sys.exit(1)
 
+    # project_id may be None — callers that need it must validate themselves
     return api_key, base_url.rstrip("/"), project_id
 
 
@@ -140,10 +143,44 @@ def add_comment(task_key, body):
     return True
 
 
-def list_tasks(column_name=None):
-    """List tasks in the configured project, optionally filtered by column name."""
-    _, _, project_id = _get_config()
-    tasks = _request("GET", f"tasks?project_id={project_id}")
+def list_projects():
+    """List all projects available to the current user."""
+    return _request("GET", "projects")
+
+
+def list_tasks(column_name=None, project_id=None):
+    """List tasks, optionally filtered by column name and/or project_id.
+
+    When project_id is None:
+      - If PLATFORM_PROJECT_ID is set in .env, uses that (single-project behaviour).
+      - Otherwise, fetches all projects with status 'En ejecucion' and returns
+        tasks from all of them, tagging each with _project_name and _project_prefix.
+    """
+    if project_id is None:
+        _, _, config_project_id = _get_config()
+        if config_project_id:
+            # Single-project mode (legacy behaviour)
+            tasks = _request("GET", f"tasks?project_id={config_project_id}")
+        else:
+            # Multi-project mode: fetch all active projects
+            projects = list_projects()
+            active = [p for p in projects if p.get("status") == "En ejecucion"]
+            if not active:
+                print(
+                    "ERROR: PLATFORM_PROJECT_ID requerido para esta operacion. "
+                    "Agregalo al .env",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            tasks = []
+            for proj in active:
+                proj_tasks = _request("GET", f"tasks?project_id={proj['id']}")
+                for t in proj_tasks:
+                    t["_project_name"] = proj.get("name", "")
+                    t["_project_prefix"] = proj.get("prefix", "")
+                tasks.extend(proj_tasks)
+    else:
+        tasks = _request("GET", f"tasks?project_id={project_id}")
 
     if column_name:
         column_id = _find_column_id(column_name)
@@ -156,13 +193,25 @@ def list_tasks(column_name=None):
     return tasks
 
 
-def create_task(title, body_markdown=None, priority="media"):
-    """Create a new task in the configured project. Returns task dict or None."""
-    _, _, project_id = _get_config()
+def create_task(title, body_markdown=None, priority="media", project_id=None):
+    """Create a new task in the configured project. Returns task dict or None.
+
+    project_id overrides the value from .env when provided.
+    """
+    _, _, config_project_id = _get_config()
+    resolved_project_id = project_id or config_project_id
+
+    if not resolved_project_id:
+        print(
+            "ERROR: PLATFORM_PROJECT_ID requerido para esta operacion. "
+            "Agregalo al .env",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     payload = {
         "title": title,
-        "project_id": project_id,
+        "project_id": resolved_project_id,
         "priority": priority,
     }
     if body_markdown:
@@ -177,6 +226,16 @@ def search_tasks_by_title(substring):
     return [t for t in tasks if substring.lower() in t.get("title", "").lower()]
 
 
+def update_task(task_key, body_markdown):
+    """Update a task's body_markdown. Returns True/False."""
+    task = get_task(task_key)
+    if not task:
+        print(f"Task {task_key} not found.", file=sys.stderr)
+        return False
+    _request("PATCH", f"tasks/{task['id']}", {"body_markdown": body_markdown})
+    return True
+
+
 # ── CLI ──
 
 def _print_task(task, full=False):
@@ -184,7 +243,9 @@ def _print_task(task, full=False):
     key = task.get("task_key", task.get("id", "?"))
     column = task.get("_column_name") or _find_column_name(task.get("column_id", ""))
     priority = task.get("priority", "?")
-    print(f"  {key}  [{column}]  [{priority}]  {task['title']}")
+    project_prefix = task.get("_project_prefix", "")
+    project_label = f"[{project_prefix}] " if project_prefix else ""
+    print(f"  {project_label}{key}  [{column}]  [{priority}]  {task['title']}")
     if full and task.get("body_markdown"):
         for line in task["body_markdown"].strip().split("\n"):
             print(f"    {line}")
@@ -232,11 +293,21 @@ def main():
 
     elif cmd == "create":
         if len(sys.argv) < 3:
-            print('Usage: platform_client.py create "<TITLE>" ["<BODY_MARKDOWN>"]')
+            print('Usage: platform_client.py create "<TITLE>" ["<BODY_MARKDOWN>"] [--project-id <UUID>]')
             sys.exit(1)
         title = sys.argv[2]
-        body = sys.argv[3] if len(sys.argv) > 3 else None
-        task = create_task(title, body)
+        body = None
+        override_project_id = None
+        i = 3
+        while i < len(sys.argv):
+            if sys.argv[i] == "--project-id" and i + 1 < len(sys.argv):
+                override_project_id = sys.argv[i + 1]
+                i += 2
+            else:
+                if body is None:
+                    body = sys.argv[i]
+                i += 1
+        task = create_task(title, body, project_id=override_project_id)
         if task:
             key = task.get("task_key", task.get("id", "?"))
             print(f"Created: {key}  {task['title']}")
@@ -246,16 +317,55 @@ def main():
 
     elif cmd == "list":
         column = None
+        project_id_arg = None
         if "--column" in sys.argv:
             idx = sys.argv.index("--column")
             if idx + 1 < len(sys.argv):
                 column = sys.argv[idx + 1]
-        tasks = list_tasks(column_name=column)
+        if "--project-id" in sys.argv:
+            idx = sys.argv.index("--project-id")
+            if idx + 1 < len(sys.argv):
+                project_id_arg = sys.argv[idx + 1]
+        tasks = list_tasks(column_name=column, project_id=project_id_arg)
         if tasks:
-            for t in tasks:
-                _print_task(t)
+            # Group by project if multi-project
+            has_multi = any(t.get("_project_name") for t in tasks)
+            if has_multi:
+                from collections import defaultdict
+                by_project = defaultdict(list)
+                for t in tasks:
+                    proj_label = t.get("_project_name") or "Unknown"
+                    by_project[proj_label].append(t)
+                for proj_name, proj_tasks in by_project.items():
+                    print(f"\n{proj_name}:")
+                    for t in proj_tasks:
+                        _print_task(t)
+            else:
+                for t in tasks:
+                    _print_task(t)
         else:
             print("No tasks found.")
+
+    elif cmd == "update":
+        if len(sys.argv) < 4:
+            print('Usage: platform_client.py update <TASK_KEY> "<BODY_MARKDOWN>"')
+            sys.exit(1)
+        ok = update_task(sys.argv[2], sys.argv[3])
+        if ok:
+            print(f"Updated {sys.argv[2]}")
+        else:
+            sys.exit(1)
+
+    elif cmd == "projects":
+        projects = list_projects()
+        if not projects:
+            print("No projects found.")
+            return
+        for i, proj in enumerate(projects, 1):
+            prefix = proj.get("prefix", "?")
+            name = proj.get("name", "?")
+            status = proj.get("status", "?")
+            print(f"  {i}. [{prefix}] {name}  ({status})")
 
     else:
         print(f"Unknown command: {cmd}")
