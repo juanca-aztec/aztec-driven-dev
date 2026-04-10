@@ -48,10 +48,18 @@ Types: `feat`, `fix`, `docs`, `test`, `chore`, `refactor`
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/platform_client.py` | REST client for Aztec Plataforma API (get, move, comment, list, create) |
+| `scripts/platform_client.py` | REST client for Aztec Plataforma API (get, move, comment, list, create, projects) |
 | `scripts/close_issue.sh` | Gate script: tests + CI + acceptance criteria |
 | `scripts/check_issue_ref.sh` | Commit-msg hook: enforces `Refs AZT-XXX` |
 | `scripts/ci_failure_bridge.py` | Auto-creates platform task when CI fails |
+
+### Required environment variables
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `PLATFORM_API_KEY` | Yes | API key for Aztec Plataforma |
+| `PLATFORM_BASE_URL` | Yes | Base URL of the Supabase edge functions |
+| `PLATFORM_PROJECT_ID` | No | UUID of a specific project. Optional — `list` and `projects` work without it (fetches all active projects). Only required for `create` when not passing `--project-id` interactively. |
 
 ## Tech Stack
 
