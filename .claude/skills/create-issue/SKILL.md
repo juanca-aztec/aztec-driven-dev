@@ -27,9 +27,23 @@ Detect the language from the user's request:
 
 ## Steps
 
-1. **Parse the request**: Extract the title and any details the user provides.
+1. **Choose project**: Run `python3 scripts/platform_client.py projects` and show the numbered list to the user. Ask them to enter the number of the project where the task should be created. Save the `id` of the selected project for the create step.
 
-2. **Build the description** using the template for the detected language:
+   ```bash
+   python3 scripts/platform_client.py projects
+   ```
+
+   Example output:
+   ```
+     1. [PLY] HDD Playground  (En ejecución)
+     2. [AZT] Aztec Core      (En ejecución)
+   ```
+
+   Wait for the user to reply with a number before continuing.
+
+2. **Parse the request**: Extract the title and any details the user provides.
+
+3. **Build the description** using the template for the detected language:
 
 ### Spanish Template (default for this project)
 
@@ -73,12 +87,12 @@ that helps understand the scope and approach.
 - Suggested approach (if applicable)
 ```
 
-3. **Create the task**:
+4. **Create the task**, passing the project id selected in step 1:
    ```bash
-   python3 scripts/platform_client.py create "<TITLE>" "<DESCRIPTION>"
+   python3 scripts/platform_client.py create "<TITLE>" "<DESCRIPTION>" --project-id <PROJECT_ID>
    ```
 
-4. **Confirm** to the user showing the task key (e.g., AZT-5) and title.
+5. **Confirm** to the user showing the task key (e.g., PLY-5) and title.
 
 ## Template Rules
 
