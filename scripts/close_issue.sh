@@ -190,7 +190,7 @@ if [ "$GATES_PASSED" -eq "$GATES_TOTAL" ]; then
 - **Autor**: ${COMMIT_AUTHOR}
 - **Fecha commit**: ${COMMIT_DATE}
 - **Mensaje**: ${COMMIT_MSG}
-$([ -n "$PR_LINK" ] && echo "- **PR**: ${PR_LINK}")
+$(if [ -n "$PR_LINK" ]; then echo "- **PR**: ${PR_LINK}"; fi)
 
 **Diff stats**
 
@@ -211,7 +211,7 @@ ${FILES_CHANGED}
 ### 4. Quality Gates
 
 - **Gate 1 — Tests**: PASS (${TESTS_PASSED})
-- **Gate 2 — CI/CD**: ${CI_STATUS_TEXT}$([ -n "$CI_RUN_LINK" ] && echo " — ${CI_RUN_LINK}")
+- **Gate 2 — CI/CD**: ${CI_STATUS_TEXT}$(if [ -n "$CI_RUN_LINK" ]; then echo " — ${CI_RUN_LINK}"; fi)
 - **Gate 3 — Acceptance Criteria**: PASS (${AC_CHECKED}/${AC_TOTAL} checked)
 
 ### 5. Audit Trail
