@@ -213,6 +213,7 @@ def create_task(title, body_markdown=None, priority="media", project_id=None):
         "title": title,
         "project_id": resolved_project_id,
         "priority": priority,
+        "story_points": 1,
     }
     if body_markdown:
         payload["body_markdown"] = body_markdown
