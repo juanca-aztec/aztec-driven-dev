@@ -20,16 +20,28 @@ import urllib.error
 
 
 def _load_env():
-    """Load all variables from .env file (project .env takes priority)."""
-    env_path = os.path.join(os.path.dirname(__file__), "..", ".env")
+    """Load all variables from .env file (project .env takes priority).
+
+    Search order:
+      1. .env in the current working directory (the user's project)
+      2. .env relative to the script location (legacy / local dev)
+      3. ~/.aztec/harness/.env (fallback for global install)
+    """
+    candidates = [
+        os.path.join(os.getcwd(), ".env"),
+        os.path.join(os.path.dirname(__file__), "..", ".env"),
+        os.path.expanduser("~/.aztec/harness/.env"),
+    ]
     env_vars = {}
-    if os.path.exists(env_path):
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    env_vars[k.strip()] = v.strip()
+    for env_path in candidates:
+        if os.path.exists(env_path):
+            with open(env_path) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        env_vars[k.strip()] = v.strip()
+            break  # stop at the first .env found
     return env_vars
 
 
@@ -120,12 +132,23 @@ def get_task(task_key):
         return None
 
 
-def move_task(task_key, column_name):
-    """Move task to a column by name (e.g., 'En curso'). Returns True/False."""
+def move_task(task_key, column_name, due_date=None):
+    """Move task to a column by name (e.g., 'En curso'). Returns True/False.
+
+    'En curso' requires a due_date. If not provided, defaults to 7 days from today.
+    """
+    import datetime
+
     task = get_task(task_key)
     if not task:
         print(f"Task {task_key} not found.", file=sys.stderr)
         return False
+
+    # 'En curso' requires due_date — set it on the task first via PATCH
+    if column_name.lower() == "en curso" and not task.get("due_date"):
+        if due_date is None:
+            due_date = (datetime.date.today() + datetime.timedelta(days=7)).isoformat()
+        _request("PATCH", f"tasks/{task['id']}", {"due_date": due_date})
 
     column_id = _find_column_id(column_name)
     _request("PATCH", f"tasks/{task['id']}/move", {"column_id": column_id})

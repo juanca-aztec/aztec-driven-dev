@@ -181,6 +181,35 @@ Solution: Own GraphQL client (~380 lines)
 Message: "Automate with APIs, not magic abstractions."
 ```
 
+## Onboarding de nuevo proyecto
+
+Tres pasos para tener el harness funcionando en cualquier proyecto:
+
+1. **Clonar este repo e instalar el harness globalmente**
+
+   ```bash
+   git clone https://github.com/felirangelp/harness-driven-dev.git
+   cd harness-driven-dev
+   bash install.sh
+   ```
+
+   Esto copia los scripts a `~/.aztec/harness/scripts/` y los skills a `~/.claude/skills/`, disponibles desde cualquier proyecto.
+
+2. **Generar un API key en Aztec Plataforma**
+
+   Ingresar a **Aztec Plataforma → Settings → API Keys → New Key** y copiar la clave generada.
+
+3. **Copiar el template de variables de entorno en el proyecto y completar los valores**
+
+   ```bash
+   cp path/to/harness-driven-dev/project-env-template .env
+   # Editar .env con PLATFORM_API_KEY, PLATFORM_BASE_URL y PLATFORM_PROJECT_ID
+   ```
+
+   Agregar `.env` al `.gitignore` del proyecto para no commitear credenciales.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.

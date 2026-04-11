@@ -1,0 +1,23 @@
+# .env — Aztec Plataforma config for this project
+#
+# Copy this file to your project root as ".env" and fill in the values.
+# Add .env to your .gitignore — never commit API keys.
+#
+# How to get each value:
+#
+#   PLATFORM_API_KEY
+#     Go to Aztec Plataforma → Settings → API Keys → New Key
+#     Copy the generated key and paste it here.
+#
+#   PLATFORM_BASE_URL
+#     The Supabase Edge Functions endpoint for Aztec Plataforma.
+#     You usually don't need to change this value.
+#
+#   PLATFORM_PROJECT_ID
+#     Go to your project in Aztec Plataforma.
+#     The UUID is in the URL: /projects/<UUID>
+#     Leave blank to let the harness operate across all active projects.
+
+PLATFORM_API_KEY=
+PLATFORM_BASE_URL=https://rbyraluapzywfrouluwh.supabase.co/functions/v1
+PLATFORM_PROJECT_ID=
