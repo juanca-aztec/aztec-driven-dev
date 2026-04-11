@@ -2,7 +2,7 @@
 name: create-issue
 description: Create a well-documented task in Aztec Plataforma with objective, description, acceptance criteria, and technical notes
 user-invocable: true
-allowed-tools: Bash(python3 scripts/*)
+allowed-tools: Bash(python3 /Users/juanca/.aztec/harness/scripts/*)
 argument-hint: "<TITLE> [details]"
 ---
 
@@ -27,19 +27,21 @@ Detect the language from the user's request:
 
 ## Steps
 
-1. **Choose project**: Run `python3 scripts/platform_client.py projects` and show the numbered list to the user. Ask them to enter the number of the project where the task should be created. Save the `id` of the selected project for the create step.
+1. **Resolve project ID** — try in this order, stop at the first match:
+
+   a. Read `.env` in the current working directory and extract `PLATFORM_PROJECT_ID`. If found and non-empty, use it silently — do NOT ask the user anything.
 
    ```bash
-   python3 scripts/platform_client.py projects
+   grep "^PLATFORM_PROJECT_ID=" .env 2>/dev/null | cut -d= -f2
    ```
 
-   Example output:
-   ```
-     1. [PLY] HDD Playground  (En ejecución)
-     2. [AZT] Aztec Core      (En ejecución)
+   b. If not found in `.env`, run the projects list and ask the user to pick one:
+
+   ```bash
+   python3 /Users/juanca/.aztec/harness/scripts/platform_client.py projects
    ```
 
-   Wait for the user to reply with a number before continuing.
+   Show the numbered list and wait for the user to reply with a number before continuing.
 
 2. **Parse the request**: Extract the title and any details the user provides.
 
@@ -87,9 +89,9 @@ that helps understand the scope and approach.
 - Suggested approach (if applicable)
 ```
 
-4. **Create the task**, passing the project id selected in step 1:
+4. **Create the task**, passing the resolved project id:
    ```bash
-   python3 scripts/platform_client.py create "<TITLE>" "<DESCRIPTION>" --project-id <PROJECT_ID>
+   python3 /Users/juanca/.aztec/harness/scripts/platform_client.py create "<TITLE>" "<DESCRIPTION>" --project-id <PROJECT_ID>
    ```
 
 5. **Confirm** to the user showing the task key (e.g., PLY-5) and title.
