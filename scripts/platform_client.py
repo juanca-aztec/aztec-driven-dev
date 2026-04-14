@@ -216,10 +216,11 @@ def list_tasks(column_name=None, project_id=None):
     return tasks
 
 
-def create_task(title, body_markdown=None, priority="media", project_id=None):
+def create_task(title, body_markdown=None, priority="media", project_id=None, parent_task_id=None):
     """Create a new task in the configured project. Returns task dict or None.
 
     project_id overrides the value from .env when provided.
+    parent_task_id links this task as a subtask of an existing task.
     """
     _, _, config_project_id = _get_config()
     resolved_project_id = project_id or config_project_id
@@ -240,6 +241,8 @@ def create_task(title, body_markdown=None, priority="media", project_id=None):
     }
     if body_markdown:
         payload["body_markdown"] = body_markdown
+    if parent_task_id:
+        payload["parent_task_id"] = parent_task_id
 
     return _request("POST", "tasks", payload)
 
@@ -317,21 +320,30 @@ def main():
 
     elif cmd == "create":
         if len(sys.argv) < 3:
-            print('Usage: platform_client.py create "<TITLE>" ["<BODY_MARKDOWN>"] [--project-id <UUID>]')
+            print('Usage: platform_client.py create "<TITLE>" ["<BODY_MARKDOWN>"] [--project-id <UUID>] [--parent-id <TASK_KEY>]')
             sys.exit(1)
         title = sys.argv[2]
         body = None
         override_project_id = None
+        parent_task_id = None
         i = 3
         while i < len(sys.argv):
             if sys.argv[i] == "--project-id" and i + 1 < len(sys.argv):
                 override_project_id = sys.argv[i + 1]
                 i += 2
+            elif sys.argv[i] == "--parent-id" and i + 1 < len(sys.argv):
+                parent_key = sys.argv[i + 1]
+                parent_task = get_task(parent_key)
+                if not parent_task:
+                    print(f"ERROR: Parent task {parent_key} not found.", file=sys.stderr)
+                    sys.exit(1)
+                parent_task_id = parent_task["id"]
+                i += 2
             else:
                 if body is None:
                     body = sys.argv[i]
                 i += 1
-        task = create_task(title, body, project_id=override_project_id)
+        task = create_task(title, body, project_id=override_project_id, parent_task_id=parent_task_id)
         if task:
             key = task.get("task_key", task.get("id", "?"))
             print(f"Created: {key}  {task['title']}")
